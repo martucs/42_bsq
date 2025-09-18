@@ -8,6 +8,7 @@ typedef struct	s_info
 	char	empty_char;
 	char	obstacle_char;
 	char	full_char;
+	char	**map;
 }	t_info;
 
 #endif
