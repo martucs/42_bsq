@@ -26,14 +26,15 @@ int	ft_chartoi(char c)
 	return (res);
 }
 
+int	is_digit(unsigned char c)
+{
+	if (c >= 48 && c <= 57)
+		return (1);
+	return (0);
+}
+
 void	read_line_by_line(t_info *data)
 {
-/*	int n = fscanf(stdin, "%d %c %c %c \n", &data->line_quantity, &data->empty_char, &data->obstacle_char, &data->full_char);
-	if (n != 4)
-	{
-		fprintf(stdout, "Error: wrong map\n");
-		return ;
-	}*/
 	char	*line = NULL;
 	size_t	len = 0;;
 
@@ -51,24 +52,65 @@ void	read_line_by_line(t_info *data)
 		read--;
 	}
 
+	// parse: must be number + 3 chars, nothing else
+	int number = 0;
+	int pos = 0;
+
+	// read digits
+	while (is_digit((unsigned char)line[pos])) 
+	{
+		number = number * 10 + (line[pos] - '0');
+		pos++;
+	}
+
+	if (pos == 0 || number <= 0)
+	{
+		fprintf(stderr, "Error: invalid number of lines\n");
+		free(line);
+		return ;
+	}
+
+	// must have exactly 3 more chars
+	if (read - pos != 3)
+	{
+		fprintf(stderr, "Error: header must have exactly 3 characters after the number\n");
+		free(line);
+		return ;
+	}
+
 	// check que los 3 caracteres sean diferentes
-	if (line[1] == line[2] || line[1] == line[3] || line[2] == line[3] || line[4])
+	if (line[pos] == line[pos + 1] || line[pos] == line[pos + 2] || line[pos + 1] == line[pos + 2] || line[pos + 3])
 	{
 		fprintf(stdout, "chars are repeated or too many\n");
 		return;
 	}
-	
+
 	fprintf(stdout, "first line: %s\n", line);
 
-	data->line_quantity = ft_chartoi(line[0]);
-	data->empty_char = line[1];
-	data->obstacle_char = line[2];
-	data->full_char = line[3];
+	data->line_quantity = number;
+	data->empty_char    = line[pos];
+	data->obstacle_char = line[pos + 1];
+	data->full_char     = line[pos + 2];
 
 	fprintf(stdout, "line quantity = %d\n", data->line_quantity);
 	fprintf(stdout, "empty char = %c\n", data->empty_char);
 	fprintf(stdout, "obst char = %c\n", data->obstacle_char);
 	fprintf(stdout, "full char = %c\n", data->full_char);
+
+/*	data->map = malloc(data->line_quantity * sizeof(char *) + 1);
+	data->map[data->lie
+	line = NULL;
+	size_t len = 0;
+
+	for (int i = 0; i < rows; i++) {
+		if (getline(&line, &len, stdin) == -1) {
+			fprintf(stderr, "Error reading line %d\n", i);
+			break;
+		}
+		fprintf(stdout, "Line %d: %s", i, line);
+	}
+
+	free(line);*/
 }
 
 char	**read_file(char *filename, t_info *data)
@@ -93,12 +135,12 @@ char	**read_file(char *filename, t_info *data)
 	fprintf(stdout, "%s", line);
 	
 	data->line_quantity = ft_chartoi(line[0]);
-	data->empty_char = line[2];
-	data->obstacle_char = line[4];
-	data->full_char = line[6];
+	data->empty_char = line[1];
+	data->obstacle_char = line[2];
+	data->full_char = line[3];
 	
 	// check que los 3 caracteres sean diferentes
-	if (line[2] == line[4] || line[2] == line[6] || line[4] == line[6])
+	if (line[1] == line[2] || line[1] == line[3] || line[2] == line[3])
 	{
 		fprintf(stdout, "chars are repeated\n");
 		return (NULL);
@@ -143,23 +185,85 @@ char	**read_file(char *filename, t_info *data)
 	return (map);
 }
 
+void	print_filled_map(char **map, t_info data)
+{
+	int x, y = 0;
+
+	while (y < data.line_quantity)
+	{
+		x = 0;
+		while (x < data.line_len)
+		{
+			if (x >= data.sq_x_start && x < data.sq_x_start + data.sq_dimension &&
+				y >= data.sq_y_start && y < data.sq_y_start + data.sq_dimension)
+				fprintf(stdout, "%c", data.full_char);
+			else
+				fprintf(stdout, "%c", data.map[y][x]);
+			x++;
+		}
+		y++;
+		fprintf(stdout, "\n");
+	}
+}
+
+int	check_square(char **map, t_info data, int x_start, int y_start, int dimension)
+{
+	int y, x;
+
+	y = 0;
+	while (y < dimension)
+	{
+		x = 0;
+		fprintf(stdout, "y = %d\n", y + y_start);
+		while (x < dimension)
+		{
+			fprintf(stdout, "x = %d\n", x + x_start);
+			if (data.map[y_start + y][x_start + x] == data.obstacle_char)
+			{
+				fprintf(stdout, "found obstacle at x = %d, y = %d\n", x + x_start, y + y_start);
+				return (0);
+			}
+			x++;
+		}
+		y++;
+	}
+	return (1);
+}
+
+// mirar si hay como minimo un caracter 'vacio' en el mapa, sino no podriamos hacer cuadrado
 
 void	find_bsq(t_info *data)
 {
 	char **new_map = NULL;
 	int	square_len_size = data->line_len;
 	int	square_height_size = data->line_quantity;
+	int	dimension = square_len_size > square_height_size ? square_height_size : square_len_size;
 
-	for (int y = 0; y < data->line_quantity - square_height_size; y++)
+	int y, x;
+	while (dimension > 0)
 	{
-		for (int x = 0; x < data->line_len - square_len_size; x++)
+		y = 0;
+		fprintf(stdout, "dimension = %d\n", dimension);
+		while(y + dimension <= square_height_size)
 		{
-			if (data->map[y][x] == data->obstacle_char)
+			fprintf(stdout, "vert = %d\n", y);
+			x = 0;
+			while(x + dimension <= square_len_size)
 			{
-				square_len_size = x;
-				break;
+				fprintf(stdout, "hor = %d\n", x);
+				if(check_square(data->map, *data, x, y, dimension) == 1)
+				{
+					fprintf(stdout, "found square at x: %d, y: %d with dimension %d!\n", x, y, dimension);
+					data->sq_dimension = dimension;
+					data->sq_x_start = x;
+					data->sq_y_start = y;
+					return ;
+				}
+				x++;
 			}
+			y++;
 		}
+		dimension--;
 	}
 }
 
@@ -185,6 +289,9 @@ void	init_data(t_info *data)
 	data->obstacle_char = '\0';
 	data->full_char = '\0';
 	data->map = NULL;
+	data->sq_dimension = 0;
+	data->sq_x_start = 0;
+	data->sq_y_start = 0;
 }
 
 int	main(int argc, char **argv)
@@ -205,7 +312,10 @@ int	main(int argc, char **argv)
 			{
 				data.map = read_file(argv[i], &data);
 				if (data.map)
+				{
 					find_bsq(&data);
+					print_filled_map(data.map, data);
+				}
 			}
 		}
 	}

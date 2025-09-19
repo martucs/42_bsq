@@ -9,6 +9,9 @@ typedef struct	s_info
 	char	obstacle_char;
 	char	full_char;
 	char	**map;
+	int	sq_dimension;
+	int	sq_x_start;
+	int	sq_y_start;
 }	t_info;
 
 #endif
