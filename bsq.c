@@ -125,26 +125,61 @@ char	**read_file(char *filename, t_info *data)
 	line = NULL;
 	len = 0;
 
-	size_t read_chars =  getline(&line, &len, filestream);
-	if (read_chars == -1)
+	int read = getline(&line, &len, filestream);
+	if (read == -1)
 	{
 		fclose(filestream);
-		fprintf(stdout, "file is empty?\n");
+		free(line);
 		return (NULL);
 	}
-	fprintf(stdout, "%s", line);
-	
-	data->line_quantity = ft_chartoi(line[0]);
-	data->empty_char = line[1];
-	data->obstacle_char = line[2];
-	data->full_char = line[3];
-	
-	// check que los 3 caracteres sean diferentes
-	if (line[1] == line[2] || line[1] == line[3] || line[2] == line[3])
+	// remove trailing newline if present
+	if (line[read - 1] == '\n')
 	{
-		fprintf(stdout, "chars are repeated\n");
+		line[read - 1] = '\0';
+		read--;
+	}
+
+	// parse: must be number + 3 chars, nothing else
+	int number = 0;
+	int pos = 0;
+	while (is_digit((unsigned char)line[pos])) 
+	{
+		number = number * 10 + (line[pos] - '0');
+		pos++;
+	}
+
+	if (pos == 0 || number <= 0)
+	{
+		fprintf(stderr, "Error: invalid number of lines\n");
+		free(line);
+		fclose(filestream);
 		return (NULL);
 	}
+
+	// must have exactly 3 more chars
+	if (read - pos != 3)
+	{
+		fprintf(stderr, "Error: header must have exactly 3 characters after the number\n");
+		free(line);
+		fclose(filestream);
+		return (NULL);
+	}
+
+	// check que los 3 caracteres sean diferentes
+	if (line[pos] == line[pos + 1] || line[pos] == line[pos + 2] || line[pos + 1] == line[pos + 2] || line[pos + 3])
+	{
+		fprintf(stdout, "chars are repeated or too many\n");
+		fclose(filestream);
+		return (NULL);
+	}
+
+	fprintf(stdout, "first line: %s\n", line);
+
+	data->line_quantity = number;
+	data->empty_char    = line[pos];
+	data->obstacle_char = line[pos + 1];
+	data->full_char     = line[pos + 2];
+
 	map = malloc(data->line_quantity * sizeof(char *));
 	// protect malloc
 	data->line_len = 0;
