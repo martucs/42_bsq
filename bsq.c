@@ -1,6 +1,5 @@
 #include "bsq.h"
 #include <stdlib.h>
-
 #include <stdio.h>
 
 int	ft_strlen(char *str)
@@ -12,25 +11,34 @@ int	ft_strlen(char *str)
 	return (i);
 }
 
-int	ft_chartoi(char c)
-{
-	int res;
-
-	res = 0;
-	int i = 0;
-	if (c >= '0' && c <= '9')
-	{
-		res = res * 10 + (c - '0');
-		i++;
-	}
-	return (res);
-}
-
 int	is_digit(unsigned char c)
 {
 	if (c >= 48 && c <= 57)
 		return (1);
 	return (0);
+}
+
+void	print_arr(char **arr)
+{
+	int x = 0;
+	while (arr && arr[x])
+	{
+		fprintf(stdout, "%s\n", arr[x]);
+		x++;
+	}
+}
+
+void	free_arr(char **arr)
+{
+	int i = 0;
+	if (!arr)
+		return ;
+	while (arr && arr[i])
+	{
+		free(arr[i]);
+		i++;
+	}
+	free(arr);
 }
 
 void	read_line_by_line(t_info *data)
@@ -42,6 +50,7 @@ void	read_line_by_line(t_info *data)
 	if (read == -1)
 	{
 		free(line);
+		fprintf(stderr, "Error: getline error\n");
 		return;
 	}
 
@@ -65,7 +74,7 @@ void	read_line_by_line(t_info *data)
 
 	if (pos == 0 || number <= 0)
 	{
-		fprintf(stderr, "Error: invalid number of lines\n");
+		fprintf(stderr, "Error: map error\n");
 		free(line);
 		return ;
 	}
@@ -73,15 +82,15 @@ void	read_line_by_line(t_info *data)
 	// must have exactly 3 more chars
 	if (read - pos != 3)
 	{
-		fprintf(stderr, "Error: header must have exactly 3 characters after the number\n");
+		fprintf(stderr, "Error: map error\n");
 		free(line);
 		return ;
 	}
 
 	// check que los 3 caracteres sean diferentes
-	if (line[pos] == line[pos + 1] || line[pos] == line[pos + 2] || line[pos + 1] == line[pos + 2] || line[pos + 3])
+	if (line[pos] == line[pos + 1] || line[pos] == line[pos + 2] || line[pos + 1] == line[pos + 2])
 	{
-		fprintf(stdout, "chars are repeated or too many\n");
+		fprintf(stdout, "Error: map error\n");
 		return;
 	}
 
@@ -97,33 +106,52 @@ void	read_line_by_line(t_info *data)
 	fprintf(stdout, "obst char = %c\n", data->obstacle_char);
 	fprintf(stdout, "full char = %c\n", data->full_char);
 
-/*	data->map = malloc(data->line_quantity * sizeof(char *) + 1);
-	data->map[data->lie
+	free(line);
 	line = NULL;
-	size_t len = 0;
+	len = 0;
+	data->map = malloc((data->line_quantity + 1) * sizeof(char *));
+	data->map[data->line_quantity] = NULL;
 
-	for (int i = 0; i < rows; i++) {
-		if (getline(&line, &len, stdin) == -1) {
-			fprintf(stderr, "Error reading line %d\n", i);
-			break;
+	for (int i = 0; i < data->line_quantity; i++)
+	{
+		if (getline(&line, &len, stdin) == -1)
+		{
+			free_arr(data->map);
+			free(line);
+			fprintf(stderr, "Error: getline error\n");
+			return;
 		}
-		fprintf(stdout, "Line %d: %s", i, line);
+		// Remove newline
+		int line_len = ft_strlen(line);
+		if (line[line_len - 1] == '\n')
+			line[line_len - 1] = '\0';
+		if (i == 0)
+			data->line_len = line_len - 1;
+		else if (ft_strlen(line) != data->line_len)
+		{
+			free(line);
+			if (data->map)
+				free_arr(data->map);
+			fprintf(stdout, "Error: map error\n");
+			return;
+		}
+		data->map[i] = line;
 	}
-
-	free(line);*/
+	print_arr(data->map);
 }
 
 char	**read_file(char *filename, t_info *data)
 {
-	char	**map;
 	FILE *filestream = fopen(filename, "r");
+	if (!filestream)
+	{
+		fprintf(stderr, "Error: could not open \'%s\'\n", filename);
+		return (NULL);
+	}	
 	
-	map = NULL;
-	char	*line;
-	size_t	len;
-
-	line = NULL;
-	len = 0;
+	char	**map = NULL;
+	char	*line = NULL;
+	size_t	len = 0;
 
 	int read = getline(&line, &len, filestream);
 	if (read == -1)
@@ -132,14 +160,12 @@ char	**read_file(char *filename, t_info *data)
 		free(line);
 		return (NULL);
 	}
-	// remove trailing newline if present
 	if (line[read - 1] == '\n')
 	{
-		line[read - 1] = '\0';
+		line[read - 1] = '\0'; // quitamos el '\'
 		read--;
 	}
-
-	// parse: must be number + 3 chars, nothing else
+	
 	int number = 0;
 	int pos = 0;
 	while (is_digit((unsigned char)line[pos])) 
@@ -147,43 +173,49 @@ char	**read_file(char *filename, t_info *data)
 		number = number * 10 + (line[pos] - '0');
 		pos++;
 	}
-
 	if (pos == 0 || number <= 0)
 	{
-		fprintf(stderr, "Error: invalid number of lines\n");
+		fprintf(stderr, "Error: map error\n");
 		free(line);
 		fclose(filestream);
 		return (NULL);
 	}
-
 	// must have exactly 3 more chars
 	if (read - pos != 3)
 	{
-		fprintf(stderr, "Error: header must have exactly 3 characters after the number\n");
+		fprintf(stderr, "Error: map error\n");
 		free(line);
 		fclose(filestream);
 		return (NULL);
 	}
 
 	// check que los 3 caracteres sean diferentes
-	if (line[pos] == line[pos + 1] || line[pos] == line[pos + 2] || line[pos + 1] == line[pos + 2] || line[pos + 3])
+	if (line[pos] == line[pos + 1] || line[pos] == line[pos + 2] || line[pos + 1] == line[pos + 2])
 	{
-		fprintf(stdout, "chars are repeated or too many\n");
+		free(line);
+		fprintf(stdout, "Error: map error\n");
 		fclose(filestream);
 		return (NULL);
 	}
-
-	fprintf(stdout, "first line: %s\n", line);
 
 	data->line_quantity = number;
 	data->empty_char    = line[pos];
 	data->obstacle_char = line[pos + 1];
 	data->full_char     = line[pos + 2];
 
-	map = malloc(data->line_quantity * sizeof(char *));
-	// protect malloc
+	free(line);
+	line = NULL;
+	
+	map = malloc((data->line_quantity + 1) * sizeof(char *));
+	if (!map)
+	{
+		fclose(filestream);
+		fprintf(stdout, "Error: malloc error\n");
+		return (NULL);
+	}
+	map[data->line_quantity] = NULL;
 	data->line_len = 0;
-
+	
 	for (int i = 0; i < data->line_quantity; i++) 
 	{
 		char *line = NULL;
@@ -191,31 +223,27 @@ char	**read_file(char *filename, t_info *data)
 		if (getline(&line, &len, filestream) == -1)
 		{
 			free(line);
-			free(map);
+			free_arr(map);
 			fclose(filestream);
-			fprintf(stdout, "someting went wrong with getline\n");
+			fprintf(stdout, "Error: getline error\n");
 			return (NULL);
 		}
-
 		// Remove newline
 		int line_len = ft_strlen(line);
 		if (line[line_len - 1] == '\n')
 			line[line_len - 1] = '\0';
 
-		if (i == 0)
-			data->line_len = line_len - 1;
-		else if (ft_strlen(line) != data->line_len)
+		if (i == 0) 
+			data->line_len = line_len;
+		else if (line_len != data->line_len)
 		{
-			//free all map char**
-			free(map);
+			free(line);
+			free_arr(map);
 			fclose(filestream);
-			fprintf(stdout, "map line lengths dont match\n");
+			fprintf(stderr, "Error: map error\n");
 			return (NULL);
 		}
 		map[i] = line;
-		if (i == 0)
-			fprintf(stdout, "line_len = %d\n", data->line_len);
-		fprintf(stdout, "storing %s\n", line);
 	}
 	return (map);
 }
@@ -249,15 +277,10 @@ int	check_square(char **map, t_info data, int x_start, int y_start, int dimensio
 	while (y < dimension)
 	{
 		x = 0;
-		fprintf(stdout, "y = %d\n", y + y_start);
 		while (x < dimension)
 		{
-			fprintf(stdout, "x = %d\n", x + x_start);
 			if (data.map[y_start + y][x_start + x] == data.obstacle_char)
-			{
-				fprintf(stdout, "found obstacle at x = %d, y = %d\n", x + x_start, y + y_start);
 				return (0);
-			}
 			x++;
 		}
 		y++;
@@ -278,17 +301,13 @@ void	find_bsq(t_info *data)
 	while (dimension > 0)
 	{
 		y = 0;
-		fprintf(stdout, "dimension = %d\n", dimension);
 		while(y + dimension <= square_height_size)
 		{
-			fprintf(stdout, "vert = %d\n", y);
 			x = 0;
 			while(x + dimension <= square_len_size)
 			{
-				fprintf(stdout, "hor = %d\n", x);
 				if(check_square(data->map, *data, x, y, dimension) == 1)
 				{
-					fprintf(stdout, "found square at x: %d, y: %d with dimension %d!\n", x, y, dimension);
 					data->sq_dimension = dimension;
 					data->sq_x_start = x;
 					data->sq_y_start = y;
@@ -306,7 +325,6 @@ void	find_bsq(t_info *data)
 int	is_valid_file(char *filename)
 {
 	FILE *filestream = fopen(filename, "r");
-
 	if (!filestream)
 	{
 		fprintf(stderr, "Error: could not open \'%s\'\n", filename);
@@ -350,6 +368,8 @@ int	main(int argc, char **argv)
 				{
 					find_bsq(&data);
 					print_filled_map(data.map, data);
+					free_arr(data.map);
+					data.map = NULL;
 				}
 			}
 		}
