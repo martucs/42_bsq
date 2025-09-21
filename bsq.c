@@ -70,14 +70,14 @@ char	**read_line_by_line(t_info *data)
 
 	if (pos == 0 || number <= 0)
 	{
-		fprintf(stderr, "Error: map error1\n");
+		fprintf(stderr, "Error: map error\n");
 		free(line);
 		return (NULL) ;
 	}
 	// must have exactly 3 more chars
 	if (read - pos != 3)
 	{
-		fprintf(stderr, "Error: map error2\n");
+		fprintf(stderr, "Error: map error\n");
 		free(line);
 		return (NULL) ;
 	}
@@ -85,7 +85,7 @@ char	**read_line_by_line(t_info *data)
 	if (line[pos] == line[pos + 1] || line[pos] == line[pos + 2] || line[pos + 1] == line[pos + 2])
 	{
 		free(line);
-		fprintf(stdout, "Error: map error3\n");
+		fprintf(stdout, "Error: map error\n");
 		return (NULL);
 	}
 	data->line_quantity = number;
@@ -124,7 +124,7 @@ char	**read_line_by_line(t_info *data)
 			free(line);
 			if (map)
 				free_arr(map);
-			fprintf(stdout, "Error: map error4\n");
+			fprintf(stdout, "Error: map error\n");
 			return (NULL);
 		}
 		map[i] = line;
