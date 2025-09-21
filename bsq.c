@@ -41,8 +41,9 @@ void	free_arr(char **arr)
 	free(arr);
 }
 
-void	read_line_by_line(t_info *data)
+char	**read_line_by_line(t_info *data)
 {
+	char	**map = NULL;
 	char	*line = NULL;
 	size_t	len = 0;;
 
@@ -51,20 +52,15 @@ void	read_line_by_line(t_info *data)
 	{
 		free(line);
 		fprintf(stderr, "Error: getline error\n");
-		return;
+		return (NULL);
 	}
-
-	// remove trailing newline if present
 	if (line[read - 1] == '\n')
 	{
 		line[read - 1] = '\0';
 		read--;
 	}
-
-	// parse: must be number + 3 chars, nothing else
 	int number = 0;
 	int pos = 0;
-
 	// read digits
 	while (is_digit((unsigned char)line[pos])) 
 	{
@@ -74,70 +70,77 @@ void	read_line_by_line(t_info *data)
 
 	if (pos == 0 || number <= 0)
 	{
-		fprintf(stderr, "Error: map error\n");
+		fprintf(stderr, "Error: map error1\n");
 		free(line);
-		return ;
+		return (NULL) ;
 	}
-
 	// must have exactly 3 more chars
 	if (read - pos != 3)
 	{
-		fprintf(stderr, "Error: map error\n");
+		fprintf(stderr, "Error: map error2\n");
 		free(line);
-		return ;
+		return (NULL) ;
 	}
-
 	// check que los 3 caracteres sean diferentes
 	if (line[pos] == line[pos + 1] || line[pos] == line[pos + 2] || line[pos + 1] == line[pos + 2])
 	{
-		fprintf(stdout, "Error: map error\n");
-		return;
+		free(line);
+		fprintf(stdout, "Error: map error3\n");
+		return (NULL);
 	}
-
-	fprintf(stdout, "first line: %s\n", line);
-
 	data->line_quantity = number;
 	data->empty_char    = line[pos];
 	data->obstacle_char = line[pos + 1];
 	data->full_char     = line[pos + 2];
 
-	fprintf(stdout, "line quantity = %d\n", data->line_quantity);
-	fprintf(stdout, "empty char = %c\n", data->empty_char);
-	fprintf(stdout, "obst char = %c\n", data->obstacle_char);
-	fprintf(stdout, "full char = %c\n", data->full_char);
-
 	free(line);
-	line = NULL;
-	len = 0;
-	data->map = malloc((data->line_quantity + 1) * sizeof(char *));
-	data->map[data->line_quantity] = NULL;
+
+	map = malloc((data->line_quantity + 1) * sizeof(char *));
+	for (int x = 0; x <= data->line_quantity; x++)
+		map[x] = NULL;
 
 	for (int i = 0; i < data->line_quantity; i++)
 	{
+		char *line = NULL;
+		size_t len = 0;
 		if (getline(&line, &len, stdin) == -1)
 		{
-			free_arr(data->map);
+			free_arr(map);
 			free(line);
 			fprintf(stderr, "Error: getline error\n");
-			return;
+			return (NULL);
 		}
 		// Remove newline
 		int line_len = ft_strlen(line);
 		if (line[line_len - 1] == '\n')
+		{
 			line[line_len - 1] = '\0';
+			line_len--;
+		}
 		if (i == 0)
-			data->line_len = line_len - 1;
+			data->line_len = line_len;
 		else if (ft_strlen(line) != data->line_len)
 		{
 			free(line);
-			if (data->map)
-				free_arr(data->map);
-			fprintf(stdout, "Error: map error\n");
-			return;
+			if (map)
+				free_arr(map);
+			fprintf(stdout, "Error: map error4\n");
+			return (NULL);
 		}
-		data->map[i] = line;
+		map[i] = line;
 	}
-	print_arr(data->map);
+	// check de que no haya caracteres diferentes a 'empty' y 'obst'
+	for (int y = 0; y < data->line_quantity; y++)
+	{
+		for (int x = 0; x < data->line_len;x++)
+			if (map[y][x] != data->empty_char && map[y][x] != data->obstacle_char)
+			{
+				fprintf(stderr, "Error: map error5\n");
+				free_arr(map);
+				return (NULL);
+			}
+	}
+	return (map);
 }
 
 char	**read_file(char *filename, t_info *data)
@@ -188,7 +191,6 @@ char	**read_file(char *filename, t_info *data)
 		fclose(filestream);
 		return (NULL);
 	}
-
 	// check que los 3 caracteres sean diferentes
 	if (line[pos] == line[pos + 1] || line[pos] == line[pos + 2] || line[pos + 1] == line[pos + 2])
 	{
@@ -204,7 +206,6 @@ char	**read_file(char *filename, t_info *data)
 	data->full_char     = line[pos + 2];
 
 	free(line);
-	line = NULL;
 	
 	map = malloc((data->line_quantity + 1) * sizeof(char *));
 	if (!map)
@@ -213,7 +214,8 @@ char	**read_file(char *filename, t_info *data)
 		fprintf(stdout, "Error: malloc error\n");
 		return (NULL);
 	}
-	map[data->line_quantity] = NULL;
+	for (int x = 0; x <= data->line_quantity; x++)
+		map[x] = NULL;
 	data->line_len = 0;
 	
 	for (int i = 0; i < data->line_quantity; i++) 
@@ -231,20 +233,35 @@ char	**read_file(char *filename, t_info *data)
 		// Remove newline
 		int line_len = ft_strlen(line);
 		if (line[line_len - 1] == '\n')
+		{
 			line[line_len - 1] = '\0';
-
+			line_len--;
+		}
 		if (i == 0) 
 			data->line_len = line_len;
 		else if (line_len != data->line_len)
 		{
+			fprintf(stderr, "Error: map error\n");
 			free(line);
 			free_arr(map);
 			fclose(filestream);
-			fprintf(stderr, "Error: map error\n");
 			return (NULL);
 		}
 		map[i] = line;
 	}
+	// check de que no haya caracteres diferentes a 'empty' y 'obst'
+	for (int y = 0; y < data->line_quantity; y++)
+	{
+		for (int x = 0; x < data->line_len;x++)
+			if (map[y][x] != data->empty_char && map[y][x] != data->obstacle_char)
+			{
+				fprintf(stderr, "Error: map error\n");
+				free_arr(map);
+				fclose(filestream);
+				return (NULL);
+			}
+	}
+	fclose(filestream);
 	return (map);
 }
 
@@ -274,10 +291,10 @@ int	check_square(char **map, t_info data, int x_start, int y_start, int dimensio
 	int y, x;
 
 	y = 0;
-	while (y < dimension)
+	while (y < dimension /*&& y + y_start < data.line_quantity*/)
 	{
 		x = 0;
-		while (x < dimension)
+		while (x < dimension /*&& x + x_start < data.line_len*/)
 		{
 			if (data.map[y_start + y][x_start + x] == data.obstacle_char)
 				return (0);
@@ -287,8 +304,6 @@ int	check_square(char **map, t_info data, int x_start, int y_start, int dimensio
 	}
 	return (1);
 }
-
-// mirar si hay como minimo un caracter 'vacio' en el mapa, sino no podriamos hacer cuadrado
 
 void	find_bsq(t_info *data)
 {
@@ -354,23 +369,25 @@ int	main(int argc, char **argv)
 	init_data(&data);
 	if (argc == 1)
 	{
-		read_line_by_line(&data);
-		// find_bsq(data);
+		data.map = read_line_by_line(&data);
+		if (data.map)
+		{	
+			find_bsq(&data);
+			fprintf(stdout, "\n");
+			print_filled_map(data.map, data);
+			free_arr(data.map);
+		}
 	}
 	else if (argc == 2)
 	{
-		for (int i = 1; i < argc; i++)
+		if (is_valid_file(argv[1]))
 		{
-			if (is_valid_file(argv[i]))
+			data.map = read_file(argv[1], &data);
+			if (data.map)
 			{
-				data.map = read_file(argv[i], &data);
-				if (data.map)
-				{
-					find_bsq(&data);
-					print_filled_map(data.map, data);
-					free_arr(data.map);
-					data.map = NULL;
-				}
+				find_bsq(&data);
+				print_filled_map(data.map, data);
+				free_arr(data.map);
 			}
 		}
 	}
