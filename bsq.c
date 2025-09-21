@@ -217,17 +217,23 @@ char	**read_file(char *filename, t_info *data)
 	for (int x = 0; x <= data->line_quantity; x++)
 		map[x] = NULL;
 	data->line_len = 0;
-	
-	for (int i = 0; i < data->line_quantity; i++) 
+
+	int i = 0;
+	while (1) 
 	{
 		char *line = NULL;
 		size_t len = 0;
 		if (getline(&line, &len, filestream) == -1)
 		{
 			free(line);
+			break;
+		}
+		if (i >= data->line_quantity)
+		{
+			free(line);
 			free_arr(map);
 			fclose(filestream);
-			fprintf(stdout, "Error: getline error\n");
+			fprintf(stderr, "Error: map has more lines than specified\n");
 			return (NULL);
 		}
 		// Remove newline
@@ -248,6 +254,14 @@ char	**read_file(char *filename, t_info *data)
 			return (NULL);
 		}
 		map[i] = line;
+		i++;
+	}
+	fclose(filestream);
+	if (i != data->line_quantity) 
+	{
+		free_arr(map);
+		fprintf(stderr, "Error: map has fewer lines than specified\n");
+		return (NULL);
 	}
 	// check de que no haya caracteres diferentes a 'empty' y 'obst'
 	for (int y = 0; y < data->line_quantity; y++)
@@ -257,11 +271,9 @@ char	**read_file(char *filename, t_info *data)
 			{
 				fprintf(stderr, "Error: map error\n");
 				free_arr(map);
-				fclose(filestream);
 				return (NULL);
 			}
 	}
-	fclose(filestream);
 	return (map);
 }
 
